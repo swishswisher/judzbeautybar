@@ -41,20 +41,24 @@ const Services = () => {
     intervalRef.current = setInterval(() => {
       goNext()
     }, 5000)
-
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [currentIndex])
 
   const handleSelect = (service: string) => {
-    const form = document.getElementById('book-form')
-    const select = document.getElementById('service-select') as HTMLSelectElement
-    if (select) {
-      Array.from(select.options).forEach(option => {
-        option.selected = option.value === service
-      })
+    const stored = localStorage.getItem('appointmentForm')
+    let data = stored
+      ? JSON.parse(stored)
+      : { name: '', email: '', phone: '', services: [] }
+
+    if (!data.services.includes(service)) {
+      data.services.push(service)
     }
+
+    localStorage.setItem('appointmentForm', JSON.stringify(data))
+
+    const form = document.getElementById('book-form')
     if (form) {
       form.scrollIntoView({ behavior: 'smooth' })
     }
@@ -79,7 +83,7 @@ const Services = () => {
           <p className="text-lg font-semibold text-[#c46f6b] mb-4">{services[currentIndex].price}</p>
           <button
             onClick={() => handleSelect(services[currentIndex].title)}
-            className="bg-[#c46f6b] text-white px-6 py-2 rounded-md hover:opacity-90 transition"
+            className="bg-[#c46f6b] text-white px-6 py-2 rounded-md hover:opacity-90 transition cursor-pointer"
           >
             Select Service
           </button>
@@ -87,20 +91,27 @@ const Services = () => {
 
         {/* Arrows */}
         <div className="flex justify-end gap-4 mt-6 pr-2">
-          <button onClick={goPrev} className="text-greenish hover:text-[#c46f6b]">
-            <FaChevronLeft size={24} />
+          <button
+            onClick={goPrev}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-greenish hover:bg-[#c46f6b] hover:text-white transition"
+          >
+            <FaChevronLeft size={18} />
           </button>
-          <button onClick={goNext} className="text-greenish hover:text-[#c46f6b]">
-            <FaChevronRight size={24} />
+          <button
+            onClick={goNext}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-greenish hover:bg-[#c46f6b] hover:text-white transition"
+          >
+            <FaChevronRight size={18} />
           </button>
         </div>
+
 
         {/* Indicator dots */}
         <div className="flex justify-center gap-2 mt-4">
           {services.map((_, i) => (
             <span
               key={i}
-              className={`w-3 h-3 rounded-full ${
+              className={`w-3 h-3 rounded-full transition-all ${
                 i === currentIndex ? 'bg-[#c46f6b]' : 'bg-gray-300'
               }`}
             />

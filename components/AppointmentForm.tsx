@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import toast, { Toaster } from 'react-hot-toast'
 
 const allServices = ['Manicure', 'Pedicure', 'Bridal Makeup']
 
 const AppointmentForm = () => {
+  const formRef = useRef<HTMLFormElement>(null)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -14,8 +15,29 @@ const AppointmentForm = () => {
   })
 
   useEffect(() => {
-    const stored = localStorage.getItem('appointmentForm')
-    if (stored) setFormData(JSON.parse(stored))
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          const stored = localStorage.getItem('appointmentForm')
+          if (stored) {
+            const updated = JSON.parse(stored)
+            setFormData((prev) => ({
+              ...prev,
+              services: updated.services || [],
+            }))
+          }
+        }
+      },
+      { threshold: 0.5 }
+    )
+
+    if (formRef.current) {
+      observer.observe(formRef.current)
+    }
+
+    return () => {
+      if (formRef.current) observer.disconnect()
+    }
   }, [])
 
   const handleChange = (
@@ -63,7 +85,7 @@ const AppointmentForm = () => {
 
       <h2 className="text-3xl font-serif text-greenish mb-8">Book an Appointment</h2>
 
-      <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4">
+      <form ref={formRef} id="book-form" onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4">
         <input
           type="text"
           name="name"
@@ -94,7 +116,6 @@ const AppointmentForm = () => {
           className="w-full p-3 border border-gray-300 rounded"
         />
 
-        {/* Service Selector */}
         <select
           onChange={handleServiceSelect}
           className="w-full p-3 border border-gray-300 rounded"
@@ -108,7 +129,6 @@ const AppointmentForm = () => {
           ))}
         </select>
 
-        {/* Selected Service Tags */}
         <div className="flex flex-wrap gap-2">
           {formData.services.map(service => (
             <span
