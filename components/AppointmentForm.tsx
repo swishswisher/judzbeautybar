@@ -1,136 +1,169 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
+import { useEffect, useRef, useState } from 'react'
+import toast, { Toaster } from 'react-hot-toast'
 
-const servicesList = ['Manicure', 'Pedicure', 'Bridal Makeup']
+const allServices = ['Manicure', 'Pedicure', 'Bridal Makeup']
 
 const AppointmentForm = () => {
+  const formRef = useRef<HTMLFormElement>(null)
   const [formData, setFormData] = useState({
     name: '',
-    phone: '',
     email: '',
+    phone: '',
     services: [] as string[],
   })
 
+  // Load prefilled form from localStorage
   useEffect(() => {
-    const savedData = localStorage.getItem('appointmentData')
-    if (savedData) {
-      setFormData(JSON.parse(savedData))
+    const stored = localStorage.getItem('appointmentData')
+    if (stored) setFormData(JSON.parse(stored))
+  }, [])
+
+  // Watch when form enters view and update services
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          const stored = localStorage.getItem('appointmentData')
+          if (stored) {
+            const updated = JSON.parse(stored)
+            setFormData((prev) => ({
+              ...prev,
+              services: updated.services || [],
+            }))
+          }
+        }
+      },
+      { threshold: 0.5 }
+    )
+
+    const current = formRef.current
+    if (current) observer.observe(current)
+
+    return () => {
+      if (current) observer.unobserve(current)
     }
   }, [])
 
-  useEffect(() => {
-    localStorage.setItem('appointmentData', JSON.stringify(formData))
-  }, [formData])
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }))
+    const updated = { ...formData, [name]: value }
+    setFormData(updated)
+    localStorage.setItem('appointmentData', JSON.stringify(updated))
   }
 
   const handleServiceSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selected = Array.from(e.target.selectedOptions, opt => opt.value)
-    setFormData(prev => ({ ...prev, services: selected }))
+    const selectedService = e.target.value
+    if (!formData.services.includes(selectedService)) {
+      const updatedServices = [...formData.services, selectedService]
+      const updated = { ...formData, services: updatedServices }
+      setFormData(updated)
+      localStorage.setItem('appointmentData', JSON.stringify(updated))
+    }
+  }
+
+  const removeService = (serviceToRemove: string) => {
+    const updatedServices = formData.services.filter(s => s !== serviceToRemove)
+    const updated = { ...formData, services: updatedServices }
+    setFormData(updated)
+    localStorage.setItem('appointmentData', JSON.stringify(updated))
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
     const { name, email, phone, services } = formData
-
     if (!name || !email || !phone || services.length === 0) {
-      toast.error('Please fill all fields and select at least one service.')
+      toast.error('Please fill out all fields and select at least one service.')
       return
     }
 
-    const message = `Hello, I'd like to book an appointment.%0A%0A👤 *Name:* ${name}%0A📧 *Email:* ${email}%0A📞 *Phone:* ${phone}%0A🛎 *Services:*%0A${services
-      .map(service => `   ✅ ${service}`)
-      .join('%0A')}`
+    const message = `Hello, I'd like to book an appointment.\n\n👤 *Name:* ${name}\n📧 *Email:* ${email}\n📞 *Phone:* ${phone}\n🛎 *Services:*\n${services.map(service => `   ✅ ${service}`).join('\n')}`
+
+    localStorage.removeItem('appointmentData')
+    setFormData({ name: '', email: '', phone: '', services: [] })
+
+    toast.success('Booking sent successfully via WhatsApp!')
 
     const whatsappUrl = `https://wa.me/254705864283?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
-
-    toast.success('Appointment sent via WhatsApp!')
-
-    // Reset form & local storage
-    setFormData({
-      name: '',
-      phone: '',
-      email: '',
-      services: [],
-    })
-    localStorage.removeItem('appointmentData')
   }
 
   return (
-    <section id="contact" className="bg-beige py-16 px-6 max-w-4xl mx-auto">
-      <h2 className="text-3xl font-serif text-greenish mb-8 text-center">Book an Appointment</h2>
+    <section id="book" className="bg-beige py-16 px-6 max-w-4xl mx-auto">
+      <Toaster position="top-right" />
+      <h2 className="text-3xl font-serif text-greenish mb-8">Book an Appointment</h2>
 
-      <form
-        onSubmit={handleSubmit}
-        id="book-form"
-        className="bg-white p-8 rounded-lg shadow-md space-y-6"
-      >
-        <div>
-          <label className="block mb-2 font-medium text-greenish">Name</label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#c46f6b]"
-            placeholder="Enter your name"
-          />
-        </div>
+      <form ref={formRef} onSubmit={handleSubmit} id="book-form" className="max-w-md mx-auto space-y-5">
+        <input
+          type="text"
+          name="name"
+          placeholder="Your Name"
+          value={formData.name}
+          onChange={handleChange}
+          required
+          className="w-full p-3 border border-gray-300 rounded"
+        />
 
-        <div>
-          <label className="block mb-2 font-medium text-greenish">Phone Number</label>
-          <input
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            placeholder="Enter WhatsApp number"
-            className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#c46f6b]"
-          />
-        </div>
+        <input
+          type="email"
+          name="email"
+          placeholder="Your Email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          className="w-full p-3 border border-gray-300 rounded"
+        />
 
-        <div>
-          <label className="block mb-2 font-medium text-greenish">Email</label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#c46f6b]"
-            placeholder="Enter your email"
-          />
-        </div>
+        <input
+          type="tel"
+          name="phone"
+          placeholder="Enter WhatsApp number"
+          value={formData.phone}
+          onChange={handleChange}
+          required
+          className="w-full p-3 border border-gray-300 rounded"
+        />
 
-        <div>
-          <label className="block mb-2 font-medium text-greenish">Select Service(s)</label>
-          <select
-            id="service-select"
-            multiple
-            value={formData.services}
-            onChange={handleServiceSelect}
-            className="w-full h-32 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#c46f6b]"
-          >
-            {servicesList.map(service => (
-              <option key={service} value={service}>
-                {service}
-              </option>
-            ))}
-          </select>
+        {/* Custom Select */}
+        <select
+          onChange={handleServiceSelect}
+          value=""
+          className="w-full p-3 border border-gray-300 rounded"
+        >
+          <option value="" disabled>Select Service</option>
+          {allServices.map(service => (
+            <option key={service} value={service}>
+              {service}
+            </option>
+          ))}
+        </select>
+
+        {/* Selected Service Pills */}
+        <div className="flex flex-wrap gap-2">
+          {formData.services.map(service => (
+            <span
+              key={service}
+              className="bg-[#c46f6b] text-white px-3 py-1 rounded-full text-sm flex items-center gap-2"
+            >
+              {service}
+              <button
+                type="button"
+                onClick={() => removeService(service)}
+                className="text-white hover:text-gray-200"
+              >
+                &times;
+              </button>
+            </span>
+          ))}
         </div>
 
         <button
           type="submit"
-          className="bg-[#c46f6b] text-white px-6 py-3 rounded-md hover:opacity-90 transition cursor-pointer w-full"
+          className="bg-[#c46f6b] text-white px-6 py-3 rounded-md text-sm font-semibold hover:opacity-90 transition w-full cursor-pointer"
         >
           Book Now
         </button>
