@@ -27,7 +27,14 @@ const services = [
 
 const Services = () => {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % services.length)
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   const goToIndex = (index: number) => {
     const newIndex = (index + services.length) % services.length
@@ -37,18 +44,10 @@ const Services = () => {
   const goNext = () => goToIndex(currentIndex + 1)
   const goPrev = () => goToIndex(currentIndex - 1)
 
-  useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      goNext()
-    }, 5000)
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [currentIndex])
-
   const handleSelect = (service: string) => {
-    const stored = localStorage.getItem('appointmentForm')
-    let data = stored
+    const form = document.getElementById('book-form')
+    const stored = localStorage.getItem('appointmentData')
+    const data = stored
       ? JSON.parse(stored)
       : { name: '', email: '', phone: '', services: [] }
 
@@ -56,12 +55,8 @@ const Services = () => {
       data.services.push(service)
     }
 
-    localStorage.setItem('appointmentForm', JSON.stringify(data))
-
-    const form = document.getElementById('book-form')
-    if (form) {
-      form.scrollIntoView({ behavior: 'smooth' })
-    }
+    localStorage.setItem('appointmentData', JSON.stringify(data))
+    if (form) form.scrollIntoView({ behavior: 'smooth' })
   }
 
   return (
@@ -105,13 +100,12 @@ const Services = () => {
           </button>
         </div>
 
-
         {/* Indicator dots */}
         <div className="flex justify-center gap-2 mt-4">
           {services.map((_, i) => (
             <span
               key={i}
-              className={`w-3 h-3 rounded-full transition-all ${
+              className={`w-3 h-3 rounded-full ${
                 i === currentIndex ? 'bg-[#c46f6b]' : 'bg-gray-300'
               }`}
             />
